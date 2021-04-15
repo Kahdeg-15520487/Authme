@@ -1,5 +1,5 @@
 # Authme
-This plugin is a feature in Essentials and can't be used with the Essentials plugin.
+This plugin is a forked from Kieaer/Authme
 
 ## Usage
 Put this plugin in the ``<server folder location>/config/mods`` folder.<br>
