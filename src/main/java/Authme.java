@@ -43,11 +43,16 @@ public class Authme extends Plugin {
                 e.player.sendMessage("You must log-in to play the server. Use the /register and /login commands.");
             }
         });
+    }
 
-        Events.on(EventType.PlayerChatEvent.class, e -> {
-            if (e.message.startsWith("register") || e.message.startsWith("login")) {
-                e.player.sendMessage("you may have leak your account login information!");
+    @Override
+    public void init(){
+        netServer.admins.addChatFilter((player, text) -> {
+            if (text.startsWith("register") || text.startsWith("login")) {
+                player.sendMessage("you may have leak your account login information!");
+                return null;
             }
+            return text;
         });
     }
 
