@@ -148,3 +148,5 @@ out/
 .DS_Store
 Thumbs.db
 android/libs/
+
+bin/
