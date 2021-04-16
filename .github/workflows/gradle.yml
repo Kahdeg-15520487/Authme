@@ -25,6 +25,18 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+    - name: Get Latest Tag
+      # You may pin to the exact commit or the version.
+      # uses: WyriHaximus/github-action-get-previous-tag@7cf31075d206b1a0341e09ef4305949a73ab599b
+      uses: WyriHaximus/github-action-get-previous-tag@v1.0.1
+    - name: PowerShell script
+      # You may pin to the exact commit or the version.
+      # uses: Amadevus/pwsh-script@1f1751bbf3d1a92127bfc6c32403283625880cbf
+      uses: Amadevus/pwsh-script@v2.0.1
+      with:
+        # PowerShell script to execute in Actions-hydrated context
+        script: |
+          write-host ${{ steps.previoustag.outputs.tag }}
     - name: GH Release
       # You may pin to the exact commit or the version.
       # uses: softprops/action-gh-release@b7e450da2a4b4cb4bfbae528f788167786cfcedf
