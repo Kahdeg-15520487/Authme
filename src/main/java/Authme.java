@@ -102,6 +102,14 @@ public class Authme extends Plugin {
             }
         });
 
+        Events.on(EventType.ResetEvent.class, e -> {
+            Log.info(Groups.player.size());
+            if (Groups.player.size() < 1) {
+                Vars.state.serverPaused = true;
+                Log.info("Vars.state.severPaused set to true");
+            }
+        });
+
         Events.on(EventType.PlayerJoin.class, e -> {
             Vars.state.serverPaused = false;
             Log.info("Vars.state.severPaused set to false");
