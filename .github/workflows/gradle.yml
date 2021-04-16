@@ -3,6 +3,9 @@
 
 name: Java CI with Gradle
 
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+
 on:
   push:
     branches: [ master ]
