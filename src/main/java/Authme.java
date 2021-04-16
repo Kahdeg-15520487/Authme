@@ -45,7 +45,16 @@ public class Authme extends Plugin {
             e.printStackTrace();
         }
 
+        Events.on(EventType.PlayerLeave.class, e -> {
+            if (Groups.player.size() == 0){
+                Vars.state.serverPaused = true;
+                Log.info("Vars.state.severPaused set to true");
+            }
+        });
+
         Events.on(EventType.PlayerJoin.class, e -> {
+            Vars.state.serverPaused = false;
+            Log.info("Vars.state.severPaused set to false");
             e.player.team(nocore(e.player));
             e.player.unit().kill();
             if (login(e.player)) {
