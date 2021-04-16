@@ -34,12 +34,18 @@ jobs:
     - name: PowerShell script
       uses: Amadevus/pwsh-script@v2.0.1
       with:
-        # PowerShell script to execute in Actions-hydrated context
+        continue-on-error: true
         script: |
           echo "lala"
           echo "${{ steps.latest_release_info.outputs.tag_name }}"
           $semver = [System.Management.Automation.SemanticVersion] ${{ steps.latest_release_info.outputs.tag_name }}
           Write-ActionWarning ($semver | Format-Table | Out-String)
+          Invoke-ActionNoCommandsBlock -GenerateToken {
+            # this won't result in any workflow commands
+            Write-Host $semver
+            Write-Host ($semver | Format-Table | Out-String)
+            Write-ActionError "not interpreted as error"
+          }
     - name: GH Release
       uses: softprops/action-gh-release@v0.1.5
       with:
