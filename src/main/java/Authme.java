@@ -1,13 +1,17 @@
 import arc.Core;
 import arc.Events;
+import arc.graphics.Color;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import mindustry.Vars;
+import mindustry.content.Fx;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Playerc;
 import mindustry.mod.Plugin;
+import mindustry.type.StatusEffect;
+
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.security.SecureRandom;
@@ -23,6 +27,8 @@ import static mindustry.Vars.state;
 public class Authme extends Plugin {
     Connection conn;
     RandomString randomString;
+
+    // public static final StatusEffect builderStatusEffect;
 
     public enum I18N {
         INFO_WELCOME_TO_SERVER,
@@ -46,9 +52,17 @@ public class Authme extends Plugin {
     public static final String countryCode = "vi";
 
     static {
+        // builderStatusEffect = new StatusEffect("builder"){{
+        //     color = Color.green;
+        //     buildSpeedMultiplier = 100f;
+        //     effect = Fx.heal;
+        //     effectChance = 0.09f;
+        // }};
+
         switch (countryCode) {
         case "vi":
-            staticMap.put(I18N.INFO_WELCOME_TO_SERVER, "Bạn cần đăng nhập mới tham gia được máy chủ này.\nDùng lệnh /register <tên tài khoản> <mật khẩu mới> <key> để tạo tài khoản mới\nDùng lệnh /login <tên tài khoản> <mật khẩu> để đăng nhập");
+            staticMap.put(I18N.INFO_WELCOME_TO_SERVER,
+                    "Bạn cần đăng nhập mới tham gia được máy chủ này.\nDùng lệnh /register <tên tài khoản> <mật khẩu mới> <key> để tạo tài khoản mới\nDùng lệnh /login <tên tài khoản> <mật khẩu> để đăng nhập");
             staticMap.put(I18N.CMD_LOGIN_DESCRIPTION, "Đăng nhập");
             staticMap.put(I18N.CMD_REGISTER_DESCRIPTION, "Đăng ký với key");
             staticMap.put(I18N.ERROR_KEY_NOT_LEGIT, "Key này không hợp lệ!");
@@ -59,7 +73,8 @@ public class Authme extends Plugin {
             break;
 
         default:
-            staticMap.put(I18N.INFO_WELCOME_TO_SERVER, "You must log-in to play the server. Use the /register and /login commands.");
+            staticMap.put(I18N.INFO_WELCOME_TO_SERVER,
+                    "You must log-in to play the server. Use the /register and /login commands.");
             staticMap.put(I18N.CMD_LOGIN_DESCRIPTION, "Login to account");
             staticMap.put(I18N.CMD_REGISTER_DESCRIPTION, "Register a new account with given key");
             staticMap.put(I18N.ERROR_KEY_NOT_LEGIT, "this key is not legit!");
@@ -115,11 +130,12 @@ public class Authme extends Plugin {
             Log.info("Vars.state.severPaused set to false");
             e.player.team(nocore(e.player));
             e.player.unit().kill();
-            if (login(e.player)) {
-                load(e.player, getPlayerAccountName(e.player.uuid()));
-            } else {
-                e.player.sendMessage(staticMap.get(I18N.INFO_WELCOME_TO_SERVER));
-            }
+            e.player.sendMessage(staticMap.get(I18N.INFO_WELCOME_TO_SERVER));
+            // if (login(e.player)) {
+            // load(e.player, getPlayerAccountName(e.player.uuid()));
+            // } else {
+            // e.player.sendMessage(staticMap.get(I18N.INFO_WELCOME_TO_SERVER));
+            // }
         });
 
         String easy = RandomString.digits + "ACEFGHJKLMNPQRUVWXYabcdefhijkprstuvwx";
@@ -155,12 +171,14 @@ public class Authme extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler) {
-        handler.<Playerc>register("login", "<id> <password>", staticMap.get(I18N.CMD_LOGIN_DESCRIPTION), (arg, player) -> {
-            String hashed = BCrypt.hashpw(arg[1], BCrypt.gensalt(11));
-            if (login(player, arg[0], hashed)) {
-                load(player, getPlayerAccountName(player.uuid()));
-            }
-        });
+        handler.<Playerc>register("login", "<id> <password>", staticMap.get(I18N.CMD_LOGIN_DESCRIPTION),
+                (arg, player) -> {
+                    if (login(player, arg[0], arg[1])) {
+                        load(player, getPlayerAccountName(arg[0]));
+                    } else {
+                        player.sendMessage(staticMap.get(I18N.ERROR_LOGIN_FAILED));
+                    }
+                });
         handler.<Playerc>register("register", "<id> <new_password> <key>", staticMap.get(I18N.CMD_REGISTER_DESCRIPTION),
                 (arg, player) -> {
                     handleRegisterNewPlayer(arg, player);
@@ -176,15 +194,15 @@ public class Authme extends Plugin {
             Class.forName("org.mindrot.jbcrypt.BCrypt");
             String hashed = BCrypt.hashpw(arg[1], BCrypt.gensalt(11));
             if (createNewPlayer(player, player.name(), player.uuid(), player.admin(), arg[0], hashed, arg[2])) {
-                load(player, getPlayerAccountName(player.uuid()));
+                load(player, getPlayerAccountName(arg[0]));
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public boolean createNewPlayer(Playerc player, String name, String uuid, boolean isAdmin, String id, String pw,
-            String key) throws SQLException {
+    public boolean createNewPlayer(Playerc player, String name, String uuid, boolean isAdmin, String accountid,
+            String hashedAccountPassword, String key) throws SQLException {
         if (!checkKey(key)) {
             player.sendMessage(staticMap.get(I18N.ERROR_KEY_NOT_LEGIT));
             return false;
@@ -193,16 +211,16 @@ public class Authme extends Plugin {
             player.sendMessage(staticMap.get(I18N.ERROR_KEY_USED));
             return false;
         }
-        if (!check(uuid) && !checkid(id)) {
-            if (claimKey(key, uuid)) {
+        if (!checkAcountId(accountid)) {
+            if (claimKey(key, accountid)) {
 
                 PreparedStatement stmt = conn.prepareStatement(
                         "INSERT INTO 'players' ('name','uuid','isadmin','accountid','accountpw') VALUES (?,?,?,?,?);");
                 stmt.setString(1, name);
                 stmt.setString(2, uuid);
                 stmt.setBoolean(3, isAdmin);
-                stmt.setString(4, id);
-                stmt.setString(5, pw);
+                stmt.setString(4, accountid);
+                stmt.setString(5, hashedAccountPassword);
                 stmt.execute();
                 stmt.close();
                 return true;
@@ -253,8 +271,8 @@ public class Authme extends Plugin {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String key = rs.getString("key");
-                    String uuid = rs.getString("uuid");
-                    results.add(key + " : " + (uuid == null ? "<no player claimed>" : getPlayerDetail(uuid)));
+                    String accountid = rs.getString("uuid");
+                    results.add(key + " : " + (accountid == null ? "<no player claimed>" : getPlayerDetail(accountid)));
                 }
             }
         } catch (SQLException e) {
@@ -263,24 +281,23 @@ public class Authme extends Plugin {
         return results;
     }
 
-    public String getPlayerDetail(String uuid) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE uuid = ?")) {
-            stmt.setString(1, uuid);
+    public String getPlayerDetail(String accountid) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE accountid = ?")) {
+            stmt.setString(1, accountid);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return "<" + rs.getString("uuid") + "|" + rs.getString("name") + "|" + rs.getString("accountid")
-                            + ">";
+                    return "<" + rs.getString("name") + "|" + rs.getString("accountid") + ">";
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return "<player does not exist>";
+        return "<player does not exist>|" + accountid;
     }
 
-    public String getPlayerAccountName(String uuid) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE uuid = ?")) {
-            stmt.setString(1, uuid);
+    public String getPlayerAccountName(String accountid) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE accountid = ?")) {
+            stmt.setString(1, accountid);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getString("accountid");
@@ -320,12 +337,12 @@ public class Authme extends Plugin {
         return false;
     }
 
-    public boolean claimKey(String key, String uuid) {
+    public boolean claimKey(String key, String accountid) {
         if (!checkKey(key)) {
             return false;
         }
         try (PreparedStatement stmt = conn.prepareStatement("UPDATE keys SET uuid = ? WHERE key = ?;")) {
-            stmt.setString(1, uuid);
+            stmt.setString(1, accountid);
             stmt.setString(2, key);
             stmt.execute();
             stmt.close();
@@ -336,19 +353,9 @@ public class Authme extends Plugin {
         return false;
     }
 
-    public boolean check(String uuid) throws SQLException {
-        PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE uuid = ?;");
-        stmt.setString(1, uuid);
-        ResultSet rs = stmt.executeQuery();
-        boolean result = rs.next();
-        rs.close();
-        stmt.close();
-        return result;
-    }
-
-    public boolean checkid(String id) {
+    public boolean checkAcountId(String accountid) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE accountid = ?;")) {
-            stmt.setString(1, id);
+            stmt.setString(1, accountid);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();
             }
@@ -358,18 +365,15 @@ public class Authme extends Plugin {
         return false;
     }
 
-    public boolean login(Playerc player, String id, String pw) {
+    public boolean login(Playerc player, String accountId, String plaintextAccountPasword) {
         try {
-            PreparedStatement stmt = conn
-                    .prepareStatement("SELECT * FROM players WHERE accountid = ? AND accountpw = ?;");
-            stmt.setString(1, id);
-            stmt.setString(2, pw);
+            PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE accountid = ?;");
+            stmt.setString(1, accountId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    if (BCrypt.checkpw(pw, rs.getString("pw")))
+                    if (BCrypt.checkpw(plaintextAccountPasword, rs.getString("accountpw"))) {
                         return true;
-                } else {
-                    player.sendMessage(staticMap.get(I18N.ERROR_LOGIN_FAILED));
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -378,25 +382,13 @@ public class Authme extends Plugin {
         return false;
     }
 
-    public boolean login(Playerc player) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE uuid = ?;")) {
-            stmt.setString(1, player.uuid());
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    if (rs.getString("uuid").equals(player.uuid()))
-                        return true;
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public void load(Playerc player, String accountName) {
+    public void load(Playerc player, String accountid) {
         player.team(state.rules.pvp ? netServer.assignTeam(player.as(), Groups.player) : Team.sharded);
         player.unit().kill();
-        player.sendMessage(staticMap.get(I18N.INFO_LOGIN_SUCCESS) + accountName + "!");
+        player.sendMessage(staticMap.get(I18N.INFO_LOGIN_SUCCESS) + accountid + "!");
+        // player.unit().apply(builderStatusEffect,Float.POSITIVE_INFINITY);
+        // Log.info(player.unit().hasEffect(builderStatusEffect));
+        // Log.info(player.unit().statusColor());
     }
 
     public Team nocore(Playerc player) {
