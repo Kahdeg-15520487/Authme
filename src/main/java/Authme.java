@@ -13,7 +13,9 @@ import org.mindrot.jbcrypt.BCrypt;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
@@ -21,6 +23,53 @@ import static mindustry.Vars.state;
 public class Authme extends Plugin {
     Connection conn;
     RandomString randomString;
+
+    public enum I18N {
+        INFO_WELCOME_TO_SERVER,
+
+        CMD_LOGIN_DESCRIPTION,
+
+        CMD_REGISTER_DESCRIPTION,
+
+        ERROR_KEY_NOT_LEGIT,
+
+        ERROR_KEY_USED,
+
+        ERROR_ACCOUNT_NAME_USED,
+
+        ERROR_LOGIN_FAILED,
+
+        INFO_LOGIN_SUCCESS
+    }
+
+    public static final Map<I18N, String> staticMap = new HashMap<>();
+    public static final String countryCode = "vi";
+
+    static {
+        switch (countryCode) {
+        case "vi":
+            staticMap.put(I18N.INFO_WELCOME_TO_SERVER, "Bạn cần đăng nhập mới tham gia được máy chủ này.\nDùng lệnh /register <tên tài khoản> <mật khẩu mới> <key> để tạo tài khoản mới\nDùng lệnh /login <tên tài khoản> <mật khẩu> để đăng nhập");
+            staticMap.put(I18N.CMD_LOGIN_DESCRIPTION, "Đăng nhập");
+            staticMap.put(I18N.CMD_REGISTER_DESCRIPTION, "Đăng ký với key");
+            staticMap.put(I18N.ERROR_KEY_NOT_LEGIT, "Key này không hợp lệ!");
+            staticMap.put(I18N.ERROR_KEY_USED, "Key này đã được sử dụng!");
+            staticMap.put(I18N.ERROR_ACCOUNT_NAME_USED, "Tên tài khoản này đã được dùng.");
+            staticMap.put(I18N.ERROR_LOGIN_FAILED, "Đăng nhập thất bại! Kiểm tra lại tên tài khoản hoặc mật khẩu");
+            staticMap.put(I18N.INFO_LOGIN_SUCCESS, "[green]Đăng nhập thành công!\nChào mừng trở lại, ");
+            break;
+
+        default:
+            staticMap.put(I18N.INFO_WELCOME_TO_SERVER, "You must log-in to play the server. Use the /register and /login commands.");
+            staticMap.put(I18N.CMD_LOGIN_DESCRIPTION, "Login to account");
+            staticMap.put(I18N.CMD_REGISTER_DESCRIPTION, "Register a new account with given key");
+            staticMap.put(I18N.ERROR_KEY_NOT_LEGIT, "this key is not legit!");
+            staticMap.put(I18N.ERROR_KEY_USED, "this key is already used!");
+            staticMap.put(I18N.ERROR_ACCOUNT_NAME_USED, "This account is already in use!");
+            staticMap.put(I18N.ERROR_LOGIN_FAILED, "Login failed! Check your account id or password!");
+            staticMap.put(I18N.INFO_LOGIN_SUCCESS, "[green]Login successful!\nWelcome back, ");
+            break;
+        }
+    }
 
     public Authme() {
         try {
@@ -61,7 +110,7 @@ public class Authme extends Plugin {
             if (login(e.player)) {
                 load(e.player, getPlayerAccountName(e.player.uuid()));
             } else {
-                e.player.sendMessage("You must log-in to play the server. Use the /register and /login commands.");
+                e.player.sendMessage(staticMap.get(I18N.INFO_WELCOME_TO_SERVER));
             }
         });
 
@@ -73,7 +122,6 @@ public class Authme extends Plugin {
     public void init() {
         netServer.admins.addChatFilter((player, text) -> {
             if (text.startsWith("register") || text.startsWith("login")) {
-                player.sendMessage("you may have leak your account login information!");
                 return null;
             }
             return text;
@@ -99,17 +147,17 @@ public class Authme extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler) {
-        handler.<Playerc>register("login", "<id> <password>", "Login to account", (arg, player) -> {
+        handler.<Playerc>register("login", "<id> <password>", staticMap.get(I18N.CMD_LOGIN_DESCRIPTION), (arg, player) -> {
             String hashed = BCrypt.hashpw(arg[1], BCrypt.gensalt(11));
             if (login(player, arg[0], hashed)) {
                 load(player, getPlayerAccountName(player.uuid()));
             }
         });
-        handler.<Playerc>register("register", "<id> <new_password> <key>", "Register a new account with given key",
+        handler.<Playerc>register("register", "<id> <new_password> <key>", staticMap.get(I18N.CMD_REGISTER_DESCRIPTION),
                 (arg, player) -> {
                     handleRegisterNewPlayer(arg, player);
                 });
-        handler.<Playerc>register("reg", "<id> <new_password> <key>", "Register a new account with given key",
+        handler.<Playerc>register("reg", "<id> <new_password> <key>", staticMap.get(I18N.CMD_REGISTER_DESCRIPTION),
                 (arg, player) -> {
                     handleRegisterNewPlayer(arg, player);
                 });
@@ -120,7 +168,7 @@ public class Authme extends Plugin {
             Class.forName("org.mindrot.jbcrypt.BCrypt");
             String hashed = BCrypt.hashpw(arg[1], BCrypt.gensalt(11));
             if (createNewPlayer(player, player.name(), player.uuid(), player.admin(), arg[0], hashed, arg[2])) {
-                load(player,getPlayerAccountName(player.uuid()));
+                load(player, getPlayerAccountName(player.uuid()));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -130,11 +178,11 @@ public class Authme extends Plugin {
     public boolean createNewPlayer(Playerc player, String name, String uuid, boolean isAdmin, String id, String pw,
             String key) throws SQLException {
         if (!checkKey(key)) {
-            player.sendMessage("this key is not legit!");
+            player.sendMessage(staticMap.get(I18N.ERROR_KEY_NOT_LEGIT));
             return false;
         }
         if (checkKeyUsed(key)) {
-            player.sendMessage("this key is already used!");
+            player.sendMessage(staticMap.get(I18N.ERROR_KEY_USED));
             return false;
         }
         if (!check(uuid) && !checkid(id)) {
@@ -153,7 +201,7 @@ public class Authme extends Plugin {
             }
             return false;
         } else {
-            player.sendMessage("This account is already in use!");
+            player.sendMessage(staticMap.get(I18N.ERROR_ACCOUNT_NAME_USED));
             return false;
         }
     }
@@ -313,7 +361,7 @@ public class Authme extends Plugin {
                     if (BCrypt.checkpw(pw, rs.getString("pw")))
                         return true;
                 } else {
-                    player.sendMessage("Login failed! Check your account id or password!");
+                    player.sendMessage(staticMap.get(I18N.ERROR_LOGIN_FAILED));
                 }
             }
         } catch (SQLException e) {
@@ -340,7 +388,7 @@ public class Authme extends Plugin {
     public void load(Playerc player, String accountName) {
         player.team(state.rules.pvp ? netServer.assignTeam(player.as(), Groups.player) : Team.sharded);
         player.unit().kill();
-        player.sendMessage("[green]Login successful!\nWelcome back, " + accountName + "!");
+        player.sendMessage(staticMap.get(I18N.INFO_LOGIN_SUCCESS) + accountName + "!");
     }
 
     public Team nocore(Playerc player) {
