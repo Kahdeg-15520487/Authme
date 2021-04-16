@@ -46,7 +46,8 @@ public class Authme extends Plugin {
         }
 
         Events.on(EventType.PlayerLeave.class, e -> {
-            if (Groups.player.size() == 0){
+            Log.info(Groups.player.size());
+            if (Groups.player.size() < 1) {
                 Vars.state.serverPaused = true;
                 Log.info("Vars.state.severPaused set to true");
             }
@@ -58,7 +59,7 @@ public class Authme extends Plugin {
             e.player.team(nocore(e.player));
             e.player.unit().kill();
             if (login(e.player)) {
-                load(e.player);
+                load(e.player, getPlayerAccountName(e.player.uuid()));
             } else {
                 e.player.sendMessage("You must log-in to play the server. Use the /register and /login commands.");
             }
@@ -101,7 +102,7 @@ public class Authme extends Plugin {
         handler.<Playerc>register("login", "<id> <password>", "Login to account", (arg, player) -> {
             String hashed = BCrypt.hashpw(arg[1], BCrypt.gensalt(11));
             if (login(player, arg[0], hashed)) {
-                load(player);
+                load(player, getPlayerAccountName(player.uuid()));
             }
         });
         handler.<Playerc>register("register", "<id> <new_password> <key>", "Register a new account with given key",
@@ -119,7 +120,7 @@ public class Authme extends Plugin {
             Class.forName("org.mindrot.jbcrypt.BCrypt");
             String hashed = BCrypt.hashpw(arg[1], BCrypt.gensalt(11));
             if (createNewPlayer(player, player.name(), player.uuid(), player.admin(), arg[0], hashed, arg[2])) {
-                load(player);
+                load(player,getPlayerAccountName(player.uuid()));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -213,6 +214,20 @@ public class Authme extends Plugin {
                 if (rs.next()) {
                     return "<" + rs.getString("uuid") + "|" + rs.getString("name") + "|" + rs.getString("accountid")
                             + ">";
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return "<player does not exist>";
+    }
+
+    public String getPlayerAccountName(String uuid) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM players WHERE uuid = ?")) {
+            stmt.setString(1, uuid);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("accountid");
                 }
             }
         } catch (SQLException e) {
@@ -322,10 +337,10 @@ public class Authme extends Plugin {
         return false;
     }
 
-    public void load(Playerc player) {
+    public void load(Playerc player, String accountName) {
         player.team(state.rules.pvp ? netServer.assignTeam(player.as(), Groups.player) : Team.sharded);
         player.unit().kill();
-        player.sendMessage("[green]Login successful!\nWelcome back, " + player.name() + "!");
+        player.sendMessage("[green]Login successful!\nWelcome back, " + accountName + "!");
     }
 
     public Team nocore(Playerc player) {
