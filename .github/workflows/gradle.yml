@@ -45,7 +45,7 @@ jobs:
           return $semver.ToString()
           
     - name: GH Release
-      uses: softprops/action-gh-release@v0.1.5
+      uses: softprops/action-gh-release@35d938cf01f60fbe522917c81be1e892074f6ad6
       with:
         # Newline-delimited list of path globs for asset files to upload
         files: build/libs/Authme.jar
