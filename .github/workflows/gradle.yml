@@ -36,9 +36,9 @@ jobs:
       with:
         continue-on-error: true
         script: |
-          echo "lala"
-          echo "${{ steps.latest_release_info.outputs.tag_name }}"
-          $semver = [System.Management.Automation.SemanticVersion] ${{ steps.latest_release_info.outputs.tag_name }}
+          write-host "lala"
+          write-host "${{ steps.latest_release_info.outputs.tag_name }}"
+          $semver = [System.Management.Automation.SemanticVersion]::New("${{ steps.latest_release_info.outputs.tag_name }}")
           Write-ActionWarning ($semver | Format-Table | Out-String)
           Invoke-ActionNoCommandsBlock -GenerateToken {
             # this won't result in any workflow commands
