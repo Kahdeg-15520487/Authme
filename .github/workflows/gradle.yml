@@ -29,23 +29,18 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
     - name: Get the latest release upload url, tag, date
-      # You may pin to the exact commit or the version.
-      # uses: jossef/action-latest-release-info@66a3e0617254c7acfaae82263597ea3e89df6fb9
+      id: latest_release_info
       uses: jossef/action-latest-release-info@v1.1.0
     - name: PowerShell script
-      # You may pin to the exact commit or the version.
-      # uses: Amadevus/pwsh-script@1f1751bbf3d1a92127bfc6c32403283625880cbf
       uses: Amadevus/pwsh-script@v2.0.1
       with:
         # PowerShell script to execute in Actions-hydrated context
         script: |
           echo "lala"
-          echo ${{ steps.latest_release_info.outputs.tag_name }}
+          echo "${{ steps.latest_release_info.outputs.tag_name }}"
           $semver = [System.Management.Automation.SemanticVersion] ${{ steps.latest_release_info.outputs.tag_name }}
           echo $semver
     - name: GH Release
-      # You may pin to the exact commit or the version.
-      # uses: softprops/action-gh-release@b7e450da2a4b4cb4bfbae528f788167786cfcedf
       uses: softprops/action-gh-release@v0.1.5
       with:
         # Newline-delimited list of path globs for asset files to upload
