@@ -39,7 +39,7 @@ jobs:
           echo "lala"
           echo "${{ steps.latest_release_info.outputs.tag_name }}"
           $semver = [System.Management.Automation.SemanticVersion] ${{ steps.latest_release_info.outputs.tag_name }}
-          echo $semver
+          echo "$semver"
     - name: GH Release
       uses: softprops/action-gh-release@v0.1.5
       with:
