@@ -33,21 +33,21 @@ jobs:
       uses: jossef/action-latest-release-info@v1.1.0
     - name: PowerShell script
       uses: Amadevus/pwsh-script@v2.0.1
+      id: bump_version_for_latest_tag
       with:
         continue-on-error: true
         script: |
           write-host "lala"
           write-host "${{ steps.latest_release_info.outputs.tag_name }}"
           $semver = [System.Management.Automation.SemanticVersion]::New("${{ steps.latest_release_info.outputs.tag_name }}")
-          Write-ActionWarning ($semver | Format-Table | Out-String)
-          Invoke-ActionNoCommandsBlock -GenerateToken {
-            # this won't result in any workflow commands
-            Write-Host $semver
-            Write-Host ($semver | Format-Table | Out-String)
-            Write-ActionError "not interpreted as error"
-          }
+          $semver = [System.Management.Automation.SemanticVersion]::New($semver.Major+1,$semver.Minor,$semver.Patch)
+          Write-Host ($semver | Format-Table | Out-String)
+          return $semver.ToString()
+          
     - name: GH Release
       uses: softprops/action-gh-release@v0.1.5
       with:
         # Newline-delimited list of path globs for asset files to upload
         files: build/libs/Authme.jar
+        tag_name: ${{ steps.bump_version_for_latest_tag.outputs.result }}
+        
